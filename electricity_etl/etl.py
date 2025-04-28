@@ -1,47 +1,65 @@
-from db.database import SessionLocal
-from db.models import Feeder, DTR, Consumer, Reading
-from config import BASE_KWH, GROWTH_RATE, FEEDER_TO_DTR_EFF, DTR_TO_CONSUMER_EFF, SIMULATE_DATE, DAYS_SINCE_START
-from datetime import timedelta
-import math
+from sqlalchemy import create_engine, text
+import random
+from datetime import datetime
 
-def simulate_day_readings():
-    session = SessionLocal()
+# PostgreSQL connection setup
+DATABASE_URL = "postgresql://neondb_owner:npg_OqnZp0BDwSE1@ep-shy-poetry-abbw3imb-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+engine = create_engine(DATABASE_URL)
+connection = engine.connect()
 
-    # Iterate over all feeders in the database
-    feeders = session.query(Feeder).all()
-    for feeder in feeders:
-        # Calculate the number of days since the feeder's start date
-        days_since_start = DAYS_SINCE_START
-        feeder_kwh = round(BASE_KWH * ((1 + GROWTH_RATE) ** days_since_start), 2)
-        
-        # Insert the simulated feeder reading into the database
-        session.add(Reading(entity_type='feeder', entity_id=feeder.id, reading_kwh=feeder_kwh, reading_date=SIMULATE_DATE))
-        
-        # Get all DTRs for the current feeder
-        dtrs = session.query(DTR).filter_by(feeder_id=feeder.id).all()
-        dtr_kwh_total = feeder_kwh * FEEDER_TO_DTR_EFF
-        dtr_kwh_each = dtr_kwh_total / len(dtrs) if dtrs else 0
+# Helpers
+def random_category_and_load():
+    categories = {
+        "Residential": (0.5, 5),
+        "Commercial": (5, 20),
+        "Industrial": (20, 100),
+        "Agricultural": (1, 15)
+    }
+    category = random.choice(list(categories.keys()))
+    low, high = categories[category]
+    load = round(random.uniform(low, high), 2)
+    return category, load
 
-        # Insert DTR readings
-        for dtr in dtrs:
-            session.add(Reading(entity_type='dtr', entity_id=dtr.id, reading_kwh=round(dtr_kwh_each, 2), reading_date=SIMULATE_DATE))
-            
-            # Get all consumers for the current DTR
-            consumers = session.query(Consumer).filter_by(dtr_id=dtr.id).all()
-            consumer_kwh_total = dtr_kwh_each * DTR_TO_CONSUMER_EFF
-            consumer_kwh_each = consumer_kwh_total / len(consumers) if consumers else 0
+def add_consumers_and_update_load():
+    # Get all DTR ids
+    dtr_ids_result = connection.execute(text("SELECT id FROM dtrs")).fetchall()
+    if not dtr_ids_result:
+        print("⚠️ No DTRs found. Please add DTRs first.")
+        return
+    dtr_ids = [row[0] for row in dtr_ids_result]
 
-            # Insert consumer readings
-            for consumer in consumers:
-                session.add(Reading(entity_type='consumer', entity_id=consumer.id, reading_kwh=round(consumer_kwh_each, 2), reading_date=SIMULATE_DATE))
-    
-    # Commit the transaction to save all the readings
-    session.commit()
-    session.close()
+    # Get consumer count
+    consumer_count_result = connection.execute(text("SELECT COUNT(*) FROM consumers")).scalar()
+    today = datetime.now().date()
 
-def main():
-    # Running the ETL process to simulate energy readings
-    simulate_day_readings()
+    # Insert 10 new consumers
+    insert_values = []
+    for i in range(10):
+        consumer_no = f"C{consumer_count_result + i + 1:06d}"
+        dtr_id = random.choice(dtr_ids)
+        category, load_kw = random_category_and_load()
+        insert_values.append(f"('Consumer_{consumer_count_result + i + 1}', '{consumer_no}', {dtr_id}, '{category}', {load_kw}, '{today}')")
 
-if __name__ == "__main__":
-    main()
+    insert_query = f"""
+    INSERT INTO consumers (name, consumer_no, dtr_id, category, load_kw, created_at)
+    VALUES {", ".join(insert_values)}
+    """
+    connection.execute(text(insert_query))
+
+    # ✅ Update existing consumers' load with correct casting
+    update_query = """
+    UPDATE consumers
+    SET load_kw = ROUND((load_kw * (CASE 
+        WHEN random() < 0.8 THEN 1.08
+        ELSE 0.96
+    END))::numeric, 2)
+    """
+    connection.execute(text(update_query))
+
+    print("✅ Inserted 10 new consumers and updated all existing consumer loads.")
+
+# Run ETL
+add_consumers_and_update_load()
+
+# Close connection
+connection.close()
