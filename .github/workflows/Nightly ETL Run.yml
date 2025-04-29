@@ -22,7 +22,7 @@ jobs:
     - name: Install required Python packages
       run: |
         python -m pip install --upgrade pip
-        pip install pandas SQLAlchemy pydantic python-dotenv
+        pip install pandas SQLAlchemy pydantic python-dotenv psycopg2
 
     - name: Run ETL Script
       run: |
