@@ -35,10 +35,6 @@ jobs:
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
           echo "PATH=$JAVA_HOME/bin:${{ env.PATH }}" >> $GITHUB_ENV
 
-      - name: Accept Android SDK licenses
-        run: |
-          yes | sdkmanager --licenses
-
       - name: Check Java version
         run: java -version
 
