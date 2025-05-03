@@ -1,4 +1,5 @@
 [app]
+version = 1.0.0
 title = MyKivyApp
 package.name = mykivyapp
 package.domain = org.example
