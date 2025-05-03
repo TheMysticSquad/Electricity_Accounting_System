@@ -1,13 +1,18 @@
-name: CI
+name: Bulid
 
 on:
   push:
-    branches: 
+    branches:
       - main
+
+concurrency:
+  group: 'ci-${{ github.ref }}'
+  cancel-in-progress: true  # Cancels in-progress jobs for the same branch
 
 jobs:
   build:
     runs-on: ubuntu-20.04
+    timeout-minutes: 60  # Allow the job to run for 60 minutes before cancellation
 
     steps:
     # Step 1: Checkout the code from the repository
@@ -54,7 +59,7 @@ jobs:
         command: buildozer android debug
         buildozer_version: stable
 
-    # Step 7: Upload artifacts (APK file)
+    # Step 7: Upload APK artifact
     - name: Upload APK artifact
       uses: actions/upload-artifact@v2
       with:
