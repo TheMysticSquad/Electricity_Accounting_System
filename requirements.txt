@@ -1,8 +1,9 @@
 dash
-
 plotly
-pymongo
 pandas
+pymongo
 SQLAlchemy
 pydantic
 python-dotenv
+dash_core_components
+dash_html_components
