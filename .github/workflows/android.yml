@@ -1,3 +1,5 @@
+name: Android Build
+
 on:
   push:
     branches:
@@ -9,7 +11,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
       - uses: actions/checkout@v4
 
@@ -29,12 +30,15 @@ jobs:
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
+
+      - name: Accept Android SDK licenses
+        run: |
           yes | sdkmanager --licenses
 
       - name: Check Java version
         run: java -version
 
-      - name: Build APK
+      - name: Build APK with Buildozer
         uses: digreatbrian/buildozer-action@v2
         with:
           python-version: 3.8
@@ -44,4 +48,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: package
-          path: ./bin/*.apk
+          path: ./bin/*.apk # Assuming buildozer places the APK in the ./bin directory
