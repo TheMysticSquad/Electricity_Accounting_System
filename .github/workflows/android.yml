@@ -19,17 +19,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libtinfo6
 
-      - name: Install sdkmanager dependencies
+      - name: Install sdkmanager
         run: |
           sudo apt-get install -y unzip openjdk-17-jdk wget
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           unzip cmdline-tools.zip -d $HOME/cmdline-tools
-          mkdir -p $HOME/android-sdk/cmdline-tools/latest
-          mv $HOME/cmdline-tools/cmdline-tools/* $HOME/android-sdk/cmdline-tools/latest/
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          export PATH=$JAVA_HOME/bin:$PATH
+          mkdir -p $ANDROID_HOME/cmdline-tools/latest
+          mv $HOME/cmdline-tools/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
+        env:
+          ANDROID_HOME: ${{ github.workspace }}/android-sdk # Define ANDROID_HOME
+
+      - name: Set up environment variables
+        run: |
+          echo "ANDROID_HOME=${{ github.workspace }}/android-sdk" >> $GITHUB_ENV
+          echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+          echo "PATH=$JAVA_HOME/bin:$PATH" >> $GITHUB_ENV
 
       - name: Accept Android SDK licenses
         run: |
