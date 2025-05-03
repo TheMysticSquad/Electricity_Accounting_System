@@ -51,8 +51,13 @@ jobs:
         run: |
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           unzip cmdline-tools.zip -d $HOME/cmdline-tools
-          mkdir -p $ANDROID_HOME/cmdline-tools/latest
-          mv $HOME/cmdline-tools/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
+          
+          # Clear the old cmdline-tools if they exist
+          sudo rm -rf /usr/local/lib/android/sdk/cmdline-tools/latest
+
+          # Move the new cmdline-tools into the sdk directory
+          sudo mv $HOME/cmdline-tools/cmdline-tools /usr/local/lib/android/sdk/cmdline-tools/latest
+
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
