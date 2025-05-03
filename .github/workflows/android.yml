@@ -1,61 +1,54 @@
-name: Build Android APK
+name: Build Kivy APK
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-apk:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: '3.8'
+          architecture: x64
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y \
-            python3-pip \
-            build-essential \
-            git \
-            zip \
-            unzip \
-            openjdk-17-jdk \
-            libncurses5 \
-            libstdc++6 \
-            libffi-dev \
-            libssl-dev \
-            libsqlite3-dev \
-            libbz2-dev \
-            libreadline-dev \
-            liblzma-dev \
-            zlib1g-dev \
-            libgdbm-dev \
-            libnss3-dev \
-            libx11-dev \
-            libandroid-support-dev \
-            libsdl2-dev
+      - name: Set up Java 17 (required for Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Install buildozer
+      - name: Install system dependencies
         run: |
-          pip install --upgrade pip
-          pip install cython
-          pip install buildozer
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk python3-pip \
+            autoconf libtool pkg-config zlib1g-dev \
+            libncurses5-dev libncursesw5-dev libtinfo5 \
+            cmake libffi-dev libssl-dev
 
-      - name: Build APK
+      - name: Upgrade pip and install Buildozer
         run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install Cython==0.29.33 buildozer
+
+      - name: Install app requirements (if requirements.txt exists)
+        run: |
+          if [ -f requirements.txt ]; then
+            echo "Installing from requirements.txt..."
+            python3 -m pip install -r requirements.txt
+          else
+            echo "No requirements.txt found."
+          fi
+
+      - name: Build APK with Buildozer
+        run: |
+          echo "Running buildozer android debug"
           buildozer android debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: myapp-debug-apk
-          path: bin/*.apk
