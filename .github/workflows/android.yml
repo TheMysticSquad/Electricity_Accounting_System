@@ -3,7 +3,7 @@ name: Build APK
 on:
   push:
     branches:
-      - main  # or master
+      - main  # Change to 'master' if needed
 
 jobs:
   build:
@@ -21,16 +21,20 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk python3-pip
+        sudo apt install -y git zip unzip python3-pip \
+                            openjdk-8-jdk libffi-dev libssl-dev \
+                            libncurses5 libstdc++6 python3-dev
+        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+        echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
         pip install --upgrade pip
-        pip install buildozer cython
+        pip install buildozer cython kivy
 
     - name: Build APK
       run: |
-        sudo apt install -y libffi-dev libssl-dev
-        mkdir -p bin  # Ensure the bin directory exists
-        buildozer android debug
-        ls -al bin  # Debugging: Verify APK is generated
+        mkdir -p bin
+        buildozer android clean  # Optional: ensures a clean build
+        buildozer android debug || { echo "Buildozer failed!"; cat buildozer.spec; exit 1; }
+        ls -al bin  # Confirm APK file exists
 
     - name: Send APK via Email
       env:
