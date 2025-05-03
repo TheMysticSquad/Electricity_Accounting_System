@@ -28,10 +28,11 @@ jobs:
     - name: Build APK
       run: |
         sudo apt install -y libffi-dev libssl-dev
+        mkdir -p bin  # Ensure the bin directory exists
         buildozer android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v3
       with:
         name: mykivyapp-debug.apk
-        path: bin/*.apk
+        path: bin/*.apk  # Ensure this matches the actual APK output location
