@@ -30,9 +30,16 @@ jobs:
         sudo apt install -y libffi-dev libssl-dev
         mkdir -p bin  # Ensure the bin directory exists
         buildozer android debug
+        ls -al bin  # Debugging: Verify APK is generated
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v3
-      with:
-        name: mykivyapp-debug.apk
-        path: bin/*.apk  # Ensure this matches the actual APK output location
+    - name: Send APK via Email
+      env:
+        RECIPIENT_EMAIL: abhinandanroy165@gmail.com
+      run: |
+        sudo apt install -y mailutils
+        APK_PATH=$(ls bin/*.apk | head -n 1)
+        if [ -f "$APK_PATH" ]; then
+          echo "Sending APK to ${RECIPIENT_EMAIL}"
+          echo "Here is your APK file." | mailx -s "Your APK File" -a "$APK_PATH" "${RECIPIENT_EMAIL}"
+        else
+          echo "APK file not found. Email not sent." && exit 1
