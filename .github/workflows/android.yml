@@ -15,37 +15,27 @@ jobs:
 
       - name: Update apt and Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libtinfo6 coreutils
+          apt-get update
+          apt-get install -y git \
+            zip \
+            unzip \
+            openjdk-17-jdk \
+            python3-pip \
+            autoconf \
+            libtool \
+            pkg-config \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            libtinfo5 \
+            cmake \
+            libffi-dev \
+            libssl-dev
+          export PATH=$PATH:~/.local/bin/
+          python3 -m pip install --upgrade \
+            Cython==0.29.33 \
+            buildozer
 
       - name: Install sdkmanager
         run: |
-          sudo apt-get install -y unzip openjdk-17-jdk wget
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $HOME/cmdline-tools
-          mkdir -p $ANDROID_HOME/cmdline-tools/latest
-          mv $HOME/cmdline-tools/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
-        env:
-          ANDROID_HOME: ${{ github.workspace }}/android-sdk # Define ANDROID_HOME
-
-      - name: Set up environment variables
-        run: |
-          echo "ANDROID_HOME=${{ github.workspace }}/android-sdk" >> $GITHUB_ENV
-          echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:${{ env.PATH }}" >> $GITHUB_ENV
-          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-          echo "PATH=$JAVA_HOME/bin:${{ env.PATH }}" >> $GITHUB_ENV
-
-      - name: Check Java version
-        run: java -version
-
-      - name: Build APK with Buildozer
-        uses: digreatbrian/buildozer-action@v2
-        with:
-          python-version: 3.8
-          buildozer-cmd: buildozer -v android debug
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: package
-          path: ./bin/*.apk # Assuming buildozer places the APK in the ./bin directory
+          wget https://
