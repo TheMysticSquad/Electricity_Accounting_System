@@ -1,11 +1,11 @@
 on: 
-  push:     # or any other event you'd like to trigger the workflow
+  push:
     branches:
       - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
