@@ -1,109 +1,131 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-import plotly.express as px
-import plotly.graph_objs as go
-import pandas as pd
-from pymongo import MongoClient
 from dash.dependencies import Input, Output
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Initialize the Dash app
+# Database connection configuration
+DB_URL = "postgresql://neondb_owner:npg_OqnZp0BDwSE1@ep-shy-poetry-abbw3imb-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+
+# Initialize Dash app
 app = dash.Dash(__name__)
+app.title = "Electricity Distribution Network Dashboard"
 
-# MongoDB connection setup (Replace with your MongoDB online server details)
-MONGO_URI = "mongodb+srv://<username>:<password>@cluster0.mongodb.net/test?retryWrites=true&w=majority"  # Use your MongoDB connection URI
-client = MongoClient(MONGO_URI)
-db = client["energy_data"]  # Replace with your actual database name
-collection = db["consumption_data"]  # Replace with your actual collection name
-
-# Define function to fetch real-time data from MongoDB
-def fetch_data():
-    # Query to get daily consumption data by feeder for the last 7 days
-    data = list(collection.find({}))  # Modify this query as needed (e.g., based on date range)
-    
-    # If no data exists, return empty DataFrame
-    if len(data) == 0:
+# Database query utility
+def query_db(sql, params=None):
+    try:
+        conn = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+        cur = conn.cursor()
+        cur.execute(sql, params)
+        data = cur.fetchall()
+        cur.close()
+        conn.close()
+        return pd.DataFrame(data)
+    except Exception as e:
+        print(f"Database error: {e}")
         return pd.DataFrame()
 
-    # Convert fetched data into pandas DataFrame for easier handling
-    df = pd.DataFrame(data)
-    
-    # Ensure that the 'date' field is properly formatted
-    df['date'] = pd.to_datetime(df['date'])
+# Get initial dropdown values
+def get_districts():
+    return query_db("SELECT id, name FROM districts")
 
-    return df
+def get_substations(district_id):
+    return query_db("SELECT id, name FROM substations WHERE district_id = %s", (district_id,))
 
-# Create the bar chart for daily energy consumption
-def create_bar_chart(df):
-    return px.bar(df, x='date', y='consumption', color='feeder', title="Energy Consumption by Feeder",
-                 labels={'consumption': 'Energy Consumption (kWh)', 'date': 'Date'}, color_discrete_sequence=['#00BFFF', '#FF6347', '#32CD32'])
+def get_feeders(substation_id):
+    return query_db("SELECT id, name FROM feeders WHERE substation_id = %s", (substation_id,))
 
-# Create the line chart for energy consumption growth
-def create_line_chart(df):
-    return px.line(df, x='date', y='consumption', color='feeder', title="Energy Consumption Growth Over Time",
-                   labels={'consumption': 'Energy Consumption (kWh)', 'date': 'Date'}, line_shape='linear')
+# Define the layout
+app.layout = html.Div(style={'backgroundColor': '#f0f8ff', 'padding': '20px'}, children=[
+    html.H1("Electricity Distribution Network Dashboard", style={'textAlign': 'center', 'color': '#2e3d49'}),
 
-# Create a network graph visualization using Plotly
-def create_network_graph(df):
-    network_fig = go.Figure()
+    html.Label("Select District:"),
+    dcc.Dropdown(id='district-dropdown', placeholder='Select a district'),
 
-    # Example network visualization
-    network_fig.add_trace(go.Scatter(x=[1, 2, 3], y=[2, 3, 1],
-                                    mode='markers+text',
-                                    text=['Feeder A', 'Feeder B', 'Feeder C'],
-                                    marker=dict(size=30, color='#00BFFF'),
-                                    textposition="bottom center"))
+    html.Label("Select Substation:"),
+    dcc.Dropdown(id='substation-dropdown', placeholder='Select a substation'),
 
-    # Connecting the nodes with lines
-    network_fig.add_trace(go.Scatter(x=[1.5, 2.5], y=[2.5, 2], mode='lines', line=dict(color='#00BFFF', width=2)))
+    html.Label("Select Feeder:"),
+    dcc.Dropdown(id='feeder-dropdown', placeholder='Select a feeder'),
 
-    network_fig.update_layout(title="Energy Flow Network",
-                              showlegend=False,
-                              plot_bgcolor="#f8f9fa",
-                              xaxis=dict(showgrid=False, zeroline=False),
-                              yaxis=dict(showgrid=False, zeroline=False),
-                              margin=dict(t=40, b=40, l=40, r=40))
-
-    return network_fig
-
-# Define the layout of the Dashboard
-app.layout = html.Div(style={'backgroundColor': '#f0f8ff'}, children=[
-    html.H1("Energy Consumption Dashboard", style={'textAlign': 'center', 'color': '#2e3d49', 'fontSize': 36}),
-    html.Div(style={'padding': '20px'}, children=[
-        html.H3("Overview of Energy Consumption", style={'textAlign': 'center', 'color': '#2e3d49'}),
-        dcc.Graph(id='energy-bar-chart', style={'height': '60vh'}),
-    ]),
-    html.Div(style={'padding': '20px'}, children=[
-        html.H3("Growth of Energy Consumption Over Time", style={'textAlign': 'center', 'color': '#2e3d49'}),
-        dcc.Graph(id='energy-line-chart', style={'height': '60vh'}),
-    ]),
-    html.Div(style={'padding': '20px'}, children=[
-        html.H3("Energy Flow Network", style={'textAlign': 'center', 'color': '#2e3d49'}),
-        dcc.Graph(id='energy-network-graph', style={'height': '60vh'}),
-    ]),
+    html.Br(),
+    dcc.Graph(id='feeder-pie-chart'),
+    dcc.Graph(id='feeder-bar-chart'),
+    dcc.Graph(id='dtr-pie-chart'),
+    dcc.Graph(id='dtr-bar-chart')
 ])
 
-# Callback to update the dashboard with real-time data
-@app.callback(
-    [Output('energy-bar-chart', 'figure'),
-     Output('energy-line-chart', 'figure'),
-     Output('energy-network-graph', 'figure')],
-    [Input('energy-bar-chart', 'id')]
-)
-def update_dashboard(_):
-    # Fetch the latest data from MongoDB
-    df = fetch_data()
-    
-    if df.empty:
-        # If no data is available, show a warning on the charts
-        return go.Figure(), go.Figure(), go.Figure()
+# Populate district dropdown
+@app.callback(Output('district-dropdown', 'options'),
+              Input('district-dropdown', 'id'))
+def update_district_options(_):
+    df = get_districts()
+    return [{'label': row['name'], 'value': row['id']} for _, row in df.iterrows()]
 
-    # Create the visualizations with updated data
-    bar_chart = create_bar_chart(df)
-    line_chart = create_line_chart(df)
-    network_graph = create_network_graph(df)
-    
-    return bar_chart, line_chart, network_graph
+# Update substation dropdown on district selection
+@app.callback(Output('substation-dropdown', 'options'),
+              Input('district-dropdown', 'value'))
+def update_substation_options(district_id):
+    if not district_id:
+        return []
+    df = get_substations(district_id)
+    return [{'label': row['name'], 'value': row['id']} for _, row in df.iterrows()]
+
+# Update feeder dropdown on substation selection
+@app.callback(Output('feeder-dropdown', 'options'),
+              Input('substation-dropdown', 'value'))
+def update_feeder_options(substation_id):
+    if not substation_id:
+        return []
+    df = get_feeders(substation_id)
+    return [{'label': row['name'], 'value': row['id']} for _, row in df.iterrows()]
+
+# Update charts based on substation or feeder
+@app.callback(
+    [Output('feeder-pie-chart', 'figure'),
+     Output('feeder-bar-chart', 'figure'),
+     Output('dtr-pie-chart', 'figure'),
+     Output('dtr-bar-chart', 'figure')],
+    [Input('substation-dropdown', 'value'),
+     Input('feeder-dropdown', 'value')]
+)
+def update_charts(substation_id, feeder_id):
+    if feeder_id:
+        dtr_df = query_db('''SELECT dtrs.name AS dtr_name,
+                                    COUNT(consumers.consumer_no) AS dtr_consumer_count,
+                                    SUM(consumers.load_kw) AS dtr_total_load_kw
+                             FROM dtrs
+                             LEFT JOIN consumers ON dtrs.id = consumers.dtr_id
+                             WHERE dtrs.feeder_id = %s
+                             GROUP BY dtrs.name''', (feeder_id,))
+
+        pie = px.pie(dtr_df, values='dtr_total_load_kw', names='dtr_name',
+                     title='DTR Load Distribution')
+        bar = px.bar(dtr_df, x='dtr_name', y=dtr_df['dtr_total_load_kw'] / dtr_df['dtr_consumer_count'],
+                     title='DTR Average Consumption')
+        return go.Figure(), go.Figure(), pie, bar
+
+    elif substation_id:
+        feeder_df = query_db('''SELECT feeders.name AS feeder_name,
+                                       COUNT(consumers.consumer_no) AS feeder_consumer_count,
+                                       SUM(consumers.load_kw) AS feeder_total_load_kw
+                                FROM feeders
+                                LEFT JOIN dtrs ON feeders.id = dtrs.feeder_id
+                                LEFT JOIN consumers ON dtrs.id = consumers.dtr_id
+                                WHERE feeders.substation_id = %s
+                                GROUP BY feeders.name''', (substation_id,))
+
+        pie = px.pie(feeder_df, values='feeder_total_load_kw', names='feeder_name',
+                     title='Feeder Load Distribution')
+        bar = px.bar(feeder_df, x='feeder_name', y=feeder_df['feeder_total_load_kw'] / feeder_df['feeder_consumer_count'],
+                     title='Feeder Average Consumption')
+        return pie, bar, go.Figure(), go.Figure()
+
+    return go.Figure(), go.Figure(), go.Figure(), go.Figure()
 
 # Run the app
 if __name__ == '__main__':
