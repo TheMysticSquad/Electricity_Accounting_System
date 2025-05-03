@@ -1,5 +1,8 @@
-on: 
+on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
@@ -24,7 +27,12 @@ jobs:
           mv $HOME/cmdline-tools/cmdline-tools/* $HOME/android-sdk/cmdline-tools/latest/
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH
           yes | sdkmanager --licenses
+
+      - name: Check Java version
+        run: java -version
 
       - name: Build APK
         uses: digreatbrian/buildozer-action@v2
