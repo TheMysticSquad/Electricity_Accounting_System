@@ -1,18 +1,15 @@
-on:
-  push:
-    branches: [ main ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install libtinfo6
+        run: sudo apt-get update && sudo apt-get install -y libtinfo6
       - name: Build APK
         uses: digreatbrian/buildozer-action@v2
         with:
           python-version: 3.8
           buildozer-cmd: buildozer -v android debug
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
