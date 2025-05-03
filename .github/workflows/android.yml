@@ -3,7 +3,7 @@ name: Build APK
 on:
   push:
     branches:
-      - main  # Change to 'master' if needed
+      - main
 
 jobs:
   build:
@@ -23,7 +23,7 @@ jobs:
         sudo apt update
         sudo apt install -y git zip unzip python3-pip \
                             openjdk-8-jdk libffi-dev libssl-dev \
-                            libncurses5 libstdc++6 python3-dev
+                            libncurses6 libstdc++6 python3-dev
         export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
         echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
         pip install --upgrade pip
@@ -32,9 +32,9 @@ jobs:
     - name: Build APK
       run: |
         mkdir -p bin
-        buildozer android clean  # Optional: ensures a clean build
+        buildozer android clean
         buildozer android debug || { echo "Buildozer failed!"; cat buildozer.spec; exit 1; }
-        ls -al bin  # Confirm APK file exists
+        ls -al bin
 
     - name: Send APK via Email
       env:
