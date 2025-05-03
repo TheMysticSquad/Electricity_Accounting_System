@@ -1,67 +1,20 @@
-name: Bulid
-
 on:
   push:
-    branches:
-      - main
-
-concurrency:
-  group: 'ci-${{ github.ref }}'
-  cancel-in-progress: true  # Cancels in-progress jobs for the same branch
+    branches: [ main ]
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 60  # Allow the job to run for 60 minutes before cancellation
-
+    runs-on: ubuntu-latest
     steps:
-    # Step 1: Checkout the code from the repository
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - name: Build APK
+        uses: digreatbrian/buildozer-action@v2
+        with:
+          python-version: 3.8
+          buildozer-cmd: buildozer -v android debug
 
-    # Step 2: Get the current date for cache key
-    - name: Get Date
-      id: get-date
-      run: |
-        echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
-      shell: bash
-
-    # Step 3: Cache the Buildozer global directory
-    - name: Cache Buildozer global directory
-      uses: actions/cache@v2
-      with:
-        path: ~/.buildozer
-        key: buildozer-global-${{ runner.os }}-${{ steps.get-date.outputs.date }}
-
-    # Step 4: Cache the Buildozer directory
-    - name: Cache Buildozer directory
-      uses: actions/cache@v2
-      with:
-        path: .buildozer
-        key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
-
-    # Step 5: Install dependencies (Buildozer and related packages)
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y \
-          git zip unzip python3-pip openjdk-8-jdk \
-          libffi-dev libssl-dev libncurses6 \
-          libstdc++6 python3-dev
-        pip install --upgrade pip
-        pip install buildozer cython kivy python-for-android
-
-    # Step 6: Build the project using Buildozer
-    - name: Build with Buildozer
-      uses: ArtemSBulgakov/buildozer-action@v1
-      id: buildozer
-      with:
-        command: buildozer android debug
-        buildozer_version: stable
-
-    # Step 7: Upload APK artifact
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: package
-        path: ${{ steps.buildozer.outputs.filename }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: ./bin/*.apk
