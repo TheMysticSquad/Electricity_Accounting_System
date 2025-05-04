@@ -59,7 +59,7 @@ android.permissions = INTERNET  # Add necessary permissions
 #
 [android]
 # ... other Android settings ...
-android.ndk_path = /home/runner/.buildozer/android/platform/android-ndk-r25b
+
 
 # (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
 log_level = 2
