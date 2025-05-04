@@ -35,15 +35,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
-      - name: Create NDK Directory
-        run: mkdir -p ~/.buildozer/android/platform
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer/android/platform/android-sdk
+          key: ${{ runner.os }}-android-sdk-${{ steps.get-date.outputs.date }}
+          restore-keys: |
+            ${{ runner.os }}-android-sdk-
 
-      - name: Download Android NDK (r25b)
-        run: |
-          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O /tmp/android-ndk-r25b-linux.zip
-
-      - name: Unzip Android NDK
-        run: unzip /tmp/android-ndk-r25b-linux.zip -d ~/.buildozer/android/platform/android-ndk-r25b
+      - name: Cache Android NDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer/android/platform/android-ndk-r25b
+          key: ${{ runner.os }}-android-ndk-${{ steps.get-date.outputs.date }}
+          restore-keys: |
+            ${{ runner.os }}-android-ndk-
 
       - name: Install dependencies
         run: |
@@ -61,7 +67,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11' # Keep your preferred Python version
+          python-version: '3.11'
 
       - name: Install pip dependencies
         run: |
