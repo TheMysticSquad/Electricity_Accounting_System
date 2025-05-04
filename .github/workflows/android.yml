@@ -35,19 +35,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildozer-
 
-      - name: Cache Android SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.buildozer/android/platform/android-sdk
-          key: ${{ runner.os }}-android-sdk-${{ steps.get-date.outputs.date }}
-          restore-keys: |
-            ${{ runner.os }}-android-sdk-
+      - name: Create NDK Directory
+        run: mkdir -p ~/.buildozer/android/platform
 
-      - name: Download Android NDK (r25b) # Attempt manual download
+      - name: Download Android NDK (r25b)
         run: |
-          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-          mkdir -p ~/.buildozer/android/platform
-          unzip android-ndk-r25b-linux.zip -d ~/.buildozer/android/platform/android-ndk-r25b
+          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O /tmp/android-ndk-r25b-linux.zip
+
+      - name: Unzip Android NDK
+        run: unzip /tmp/android-ndk-r25b-linux.zip -d ~/.buildozer/android/platform/android-ndk-r25b
 
       - name: Install dependencies
         run: |
@@ -72,24 +68,9 @@ jobs:
           pip install --upgrade pip
           pip install buildozer cython==0.29.33 git+https://github.com/kivy/plyer.git
 
-      - name: Build with Buildozer (with retry)
+      - name: Build with Buildozer
         id: buildozer
-        run: |
-          attempt=0
-          max_attempts=3
-          while [ $attempt -lt $max_attempts ]; do
-            yes | buildozer -v android debug
-            if [ $? -eq 0 ]; then
-              break
-            fi
-            attempt=$((attempt+1))
-            echo "Build failed. Attempt $attempt of $max_attempts. Waiting 5 seconds..."
-            sleep 5
-          done
-          if [ $? -ne 0 ]; then
-            echo "Build failed after $max_attempts attempts"
-            exit 1
-          fi
+        run: yes | buildozer -v android debug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
