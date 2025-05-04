@@ -1,8 +1,4 @@
-# Sample repository at https://github.com/Novfensec/SAMPLE-KIVYMD-APP
-# Tic Tac Toe Game at https://github.com/Novfensec/Tic-Tac-Toe-Android
-
 name: Android Build
-
 on:
   push:
     branches:
@@ -14,11 +10,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
-
     steps:
       - uses: actions/checkout@v4
 
-      # Used to cache dependencies with a timeout
       - name: Get Date
         id: get-date
         run: |
@@ -49,89 +43,54 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-android-sdk-
 
-      - name: Cache Android NDK
-        uses: actions/cache@v4
-        with:
-          path: ~/.buildozer/android/platform/android-ndk-r25b
-          key: ${{ runner.os }}-android-ndk-${{ steps.get-date.outputs.date }}
-          restore-keys: |
-            ${{ runner.os }}-android-ndk-
+      - name: Download Android NDK (r25b) # Attempt manual download
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+          mkdir -p ~/.buildozer/android/platform
+          unzip android-ndk-r25b-linux.zip -d ~/.buildozer/android/platform/android-ndk-r25b
 
-      # Install dependencies
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt-get install -y \
-            build-essential \
-            git \
-            ffmpeg \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-mixer-dev \
-            libsdl2-ttf-dev \
-            libportmidi-dev \
-            libswscale-dev \
-            libavformat-dev \
-            libavcodec-dev \
-            libunwind-dev \
-            zlib1g-dev
-          sudo apt-get install -y \
-            libsqlite3-dev \
-            sqlite3 \
-            bzip2 \
-            libbz2-dev \
-            zlib1g-dev \
-            openssl \
-            libgdbm-dev \
-            libgdbm-compat-dev \
-            liblzma-dev \
-            libreadline-dev \
-            uuid-dev \
-            libgstreamer1.0 \
-            gstreamer1.0-plugins-base \
-            gstreamer1.0-plugins-good
-          sudo apt-get install -y \
-            zip \
-            unzip \
-            autoconf \
-            libtool \
-            pkg-config \
-            libncurses5-dev \
-            libncursesw5-dev \
-            libtinfo6 \
-            cmake \
-            libffi-dev \
-            libssl-dev \
-            automake
+          sudo apt-get install -y build-essential git ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev libunwind-dev zlib1g-dev
+          sudo apt-get install -y libsqlite3-dev sqlite3 bzip2 libbz2-dev zlib1g-dev openssl libgdbm-dev libgdbm-compat-dev liblzma-dev libreadline-dev uuid-dev libgstreamer1.0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+          sudo apt-get install -y zip unzip autoconf libtool pkg-config libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev automake
 
-      # Set up Java 17 required by Gradle
       - name: Setup Java 17 required by Gradle
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'  # or 'zulu', 'liberica', etc.
+          distribution: 'temurin'
           java-version: '17'
 
-      # Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11' #set your python version
+          python-version: '3.11' # Keep your preferred Python version
 
-      # Install pip dependencies
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip
           pip install buildozer cython==0.29.33 git+https://github.com/kivy/plyer.git
 
-      # Build with Buildozer
-      - name: Build with Buildozer
+      - name: Build with Buildozer (with retry)
         id: buildozer
         run: |
-          yes | buildozer -v android debug
-        # yes | buildozer -v android release
-        # run this for generating aab (Android App Bundle) [Required by google play]
+          attempt=0
+          max_attempts=3
+          while [ $attempt -lt $max_attempts ]; do
+            yes | buildozer -v android debug
+            if [ $? -eq 0 ]; then
+              break
+            fi
+            attempt=$((attempt+1))
+            echo "Build failed. Attempt $attempt of $max_attempts. Waiting 5 seconds..."
+            sleep 5
+          done
+          if [ $? -ne 0 ]; then
+            echo "Build failed after $max_attempts attempts"
+            exit 1
+          fi
 
-      # Upload artifacts
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
